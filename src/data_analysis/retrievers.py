@@ -4,7 +4,7 @@ Contains classes for retrieving data from file (or wherever it's stored)
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Union
+from typing import List, Union
 
 import h5py
 import pandas as pd
@@ -25,13 +25,25 @@ class SPARetriever(Retriever):
     """
     Retriever used with SPA test data
     """
-    run_name: str # Name of the run whose data is needed
-    scan_param: str = None #
-    NI_DAQ_path: str = 'readout'
-    def retrieve_data(self) -> pd.DataFrame:
-        pass
+    def retrieve_data(self, filepath: Union[Path, str], run_name: Union[str, int],
+                      camera_path: str = 'camera_test', NI_DAQ_path: str = 'readout', 
+                      scan_param: str = None,muwave_shutter = True) -> pd.DataFrame:
+        """
+        Reterieves SPA test data from file
+        """
+        # Retrieve camera data
+        df_CAM = self.retrieve_camera_data(filepath, run_name, camera_path)
 
-    def retrieve_camera_data(self, filepath: Union[Path, str], run_name: str,
+        # Retrieve DAQ data
+        df_DAQ = self.retrieve_NI_DAQ_data(filepath, run_name, NI_DAQ_path, scan_param, muwave_shutter)
+
+        # Merge dataframes
+        df = df_CAM.merge(df_DAQ, left_index=True, right_index=True)
+
+        # Return merged dataframe
+        return df
+
+    def retrieve_camera_data(self, filepath: Union[Path, str], run_name: Union[str, int],
                              camera_path: str) -> pd.DataFrame:
         """
         Loads camera data from hdf file.
@@ -39,6 +51,10 @@ class SPARetriever(Retriever):
         # Initialize containers for camera images and their timestamps
         camera_data = []
         camera_time = []
+
+        # If run_name given as an index, get the string version
+        if type(run_name) == int:
+            run_name = self.get_run_names(filepath)[run_name]
 
         # Determine the path to data within the hdf file
         data_path = f"{run_name}/{camera_path}/PIProEM512Excelon"
@@ -56,7 +72,7 @@ class SPARetriever(Retriever):
         dataframe = pd.DataFrame(data = {"CameraTime" :camera_time, "CameraData": camera_data})
         return dataframe
 
-    def retrieve_NI_DAQ_data(self, filepath: Union[Path, str], run_name: str, NI_DAQ_path: str,
+    def retrieve_NI_DAQ_data(self, filepath: Union[Path, str], run_name: Union[str, int], NI_DAQ_path: str,
                              scan_param: str = None, muwave_shutter = True) -> pd.DataFrame:
         """
         Retrieves data obtained using the NI5171 PXIe DAQ
@@ -74,6 +90,10 @@ class SPARetriever(Retriever):
         DAQ_time = []
         DAQ_attrs = []
 
+        # If run_name given as an index, get the string version
+        if type(run_name) == int:
+            run_name = self.get_run_names(filepath)[run_name]
+        
         # Determine path to data within the hdf file
         data_path = f"{run_name}/{NI_DAQ_path}/PXIe-5171"
 
@@ -84,7 +104,7 @@ class SPARetriever(Retriever):
                 if 'events' not in dataset_name:
                     n = int(dataset_name.split('_')[-1])
                     DAQ_data.append(f[data_path][dataset_name][()])
-                    DAQ_time.append(f[data_path][dataset_name].attrs[f'timestamp'])
+                    DAQ_time.append(f[data_path][dataset_name].attrs['ch0 : timestamp'])
                     DAQ_attrs.append({key:value for key, value 
                                         in f[data_path][dataset_name].attrs.items()})
 
@@ -110,6 +130,26 @@ class SPARetriever(Retriever):
         dataframe = pd.DataFrame(data = data_dict)
         return dataframe
 
+    def get_run_names(self, filepath: Union[Path, str]) -> List[str]:
+        """
+        Gets the names of the datasets stored in a given file
+        """
+        with h5py.File(filepath, 'r') as f:
+            keys = list(f.keys())
+        
+        return keys
+
+    def print_run_names(self, filepath: Union[Path, str]) -> None:
+        """
+        Prints the names of the datasets stored in the given file
+        """
+        # Get dataset names
+        keys = self.get_run_names(filepath)
+
+        # Print dataset names
+        print("Dataset names:")
+        for i, key in enumerate(keys):
+            print(f"{i} -- {key}")
 
 
 
