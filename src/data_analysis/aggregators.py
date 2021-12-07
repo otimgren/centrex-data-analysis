@@ -1,3 +1,0 @@
-"""
-Classes for aggregating data
-"""
