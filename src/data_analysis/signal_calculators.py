@@ -74,6 +74,9 @@ class SignalFromGaussianFit(SignalCalculator):
         sigma_y = params['sigma_y'].value
         integrated_gaussian = A*np.pi*sigma_x*sigma_y
 
+        # Plot the image and the fit if desired
+        self.plot(image, result)
+
         return GaussianResult(integrated_gaussian, params)
 
 

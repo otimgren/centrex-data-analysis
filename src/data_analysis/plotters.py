@@ -6,6 +6,9 @@ from dataclasses import dataclass
 from typing import Tuple
 
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from matplotlib.patches import Rectangle
+import lmfit
 import numpy as np
 import pandas as pd
 
@@ -82,6 +85,54 @@ class PreProcessorPlotter(Plotter):
         self.ax[1,1].axhline(df.attrs["RC_on_cutoff"], c = 'k', ls = '--')
         self.ax[1,1].set_xlabel('Data row')
         self.ax[1,1].set_ylabel('RC PD signal')
+
+
+class GaussianFitPlotter(Plotter):
+    """
+    Used for plotting a fluorescence image and a gaussian fit to it.
+    """
+    def plot(self, image: np.ndarray, result: lmfit.model.ModelResult) -> None:
+        pass
+
+    def setup_plots(self) -> None:
+        """
+        Sets up figure and axes
+        """
+        self.fig, self.ax = plt.subplots(figsize = (32,18))
+
+        divider  = make_axes_locatable(self.ax)
+        self.top_ax = divider.append_axes("top", 1.05, pad=0.1, sharex=self.ax)
+        self.right_ax = divider.append_axes("right", 1.05, pad=0.1, sharey=self.ax)
+
+        # Get rid of some ticklabels
+        self.top_ax.xaxis.set_tick_params(labelbottom=False)
+        self.right_ax.yaxis.set_tick_params(labelleft=False)
+
+    def plot_image(self, image: np.ndarray) -> None:
+        """
+        Plots the fluorescence image
+        """
+        self.imag = self.ax.imshow(image)
+        self.ax.autoscale(enable=False)
+
+    def plot_fit(self, result: lmfit.model.ModelResult) -> None:
+        """
+        Plots the fit to the image
+        """
+        self.ax.contour(result.best_fit)
+
+    def add_colorbar(self) -> None:
+        """
+        Adds a colorbar to the plot
+        """
+        self.fig.colorbar(self.imag, ax = self.ax, shrink = 0.9)
+
+    def plot_fit_maximum():
+        """
+        Show the center of the Gaussian on the plot
+        """
+        
+
 
 
 
