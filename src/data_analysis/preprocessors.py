@@ -4,13 +4,14 @@ Contains classes for processing data, e.g. calculating integrated fluorescence.
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List
+from matplotlib.pyplot import cla
 
 import numpy as np
 import pandas as pd
 
 from .plotters import Plotter
 
-class Processor(ABC):
+class PreProcessor(ABC):
     """
     Abstract parent class for data processor
     """
@@ -22,11 +23,11 @@ class Processor(ABC):
         ...
 
 @dataclass
-class ProcessorPipeline(Processor):
+class ProcessorPipeline(PreProcessor):
     """
     Pipeline that applies multiple data processors sequentially
     """
-    processors: List[Processor]
+    processors: List[PreProcessor]
     plotters: List[Plotter] = None
 
     def process_data(self, df: pd.DataFrame, plot = True) -> None:
@@ -50,7 +51,7 @@ class ProcessorPipeline(Processor):
             plotter.plot(df)
 
 @dataclass
-class NormalizedAbsorption(Processor):
+class NormalizedAbsorption(PreProcessor):
     """
     Calculates normalized absorption. Fluctuations in laser power removed by using a normalizing
     photodiode. Signal without molecules present normalized to 1 by dividing by tail of signal.
@@ -81,7 +82,7 @@ class NormalizedAbsorption(Processor):
                                        .apply(lambda x: x[self.background_slice].mean())))
 
 @dataclass
-class IntegratedAbsorption(Processor):
+class IntegratedAbsorption(PreProcessor):
     """
     Calculates integrated absorption signal based on the normalized absortion signal
     """
@@ -100,7 +101,7 @@ class IntegratedAbsorption(Processor):
         return -np.trapz(trace[self.integration_slice] - np.mean(trace[self.background_slice]))
 
 @dataclass
-class AbsorptionBigEnough(Processor):
+class AbsorptionBigEnough(PreProcessor):
     """
     Checks if the integrated absorption signal is large enough to inculed the shot in further data
     analysis
@@ -114,7 +115,7 @@ class AbsorptionBigEnough(Processor):
         df.attrs["absorption_cutoff"] = self.absorption_cutoff    
 
 @dataclass
-class YAGFired(Processor):
+class YAGFired(PreProcessor):
     """
     Checks if the YAG fired using data from a photodiode
     """
@@ -126,7 +127,7 @@ class YAGFired(Processor):
         df.attrs["YAG_cutoff"] = self.YAG_cutoff
 
 @dataclass
-class AbsorptionON(Processor):
+class AbsorptionON(PreProcessor):
     """
     Checks if the absorption photodiode was on by using data for the normalization photodiode
     """
@@ -138,7 +139,7 @@ class AbsorptionON(Processor):
         df.attrs["absorption_on_cutoff"] = self.abs_norm_cutoff
 
 @dataclass
-class RotCoolON(Processor):
+class RotCoolON(PreProcessor):
     """
     Checks if rotational cooling laser was on by using data from photodiode
     """
@@ -151,7 +152,7 @@ class RotCoolON(Processor):
         df.attrs["RC_on_cutoff"] = self.RC_pd_cutoff
 
 @dataclass
-class RCShutterOpen(Processor):
+class RCShutterOpen(PreProcessor):
     """
     Checks if rotational cooling shutter is supposed to be open
     """
@@ -161,7 +162,7 @@ class RCShutterOpen(Processor):
         df["RCShutterOpen"] = df.RCShutter.apply(np.max) > self.shutter_open_cutoff
 
 @dataclass
-class CamDAQTimeDiff(Processor):
+class CamDAQTimeDiff(PreProcessor):
     """
     Calculates the time difference between the time the camera and DAQ data were retrieved
     (they sometimes get out of sync)
@@ -173,7 +174,7 @@ class CamDAQTimeDiff(Processor):
         df["TimeDiffSmallEnough"] = df.CamDAQTimeDiff < self.threshold
 
 @dataclass
-class IntegratedFluorescenceCam(Processor):
+class IntegratedFluorescenceCam(PreProcessor):
     pass
         
 

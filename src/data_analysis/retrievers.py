@@ -27,7 +27,8 @@ class SPARetriever(Retriever):
     """
     def retrieve_data(self, filepath: Union[Path, str], run_name: Union[str, int],
                       camera_path: str = 'camera_test', NI_DAQ_path: str = 'readout', 
-                      scan_param: str = None,muwave_shutter = True) -> pd.DataFrame:
+                      scan_param: str = None, muwave_shutter = True,
+                      scan_param_new_name: str = None) -> pd.DataFrame:
         """
         Reterieves SPA test data from file
         """
@@ -39,6 +40,10 @@ class SPARetriever(Retriever):
 
         # Merge dataframes
         df = df_CAM.merge(df_DAQ, left_index=True, right_index=True)
+
+        # If needed, give scan parameter a new name
+        if scan_param_new_name:
+            df.rename(mapper = {scan_param : scan_param_new_name}, inplace = True, axis = 1)
 
         # Return merged dataframe
         return df
