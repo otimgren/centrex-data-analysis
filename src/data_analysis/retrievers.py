@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List, Union
 
 import h5py
+import numpy as np
 import pandas as pd
 from pandas.core.frame import DataFrame
 
@@ -44,6 +45,9 @@ class SPARetriever(Retriever):
         # If needed, give scan parameter a new name
         if scan_param_new_name:
             df.rename(mapper = {scan_param : scan_param_new_name}, inplace = True, axis = 1)
+
+        # Remove lines where camera returned all zeros
+        df = df[~df["CameraData"].apply(lambda x: np.allclose(x, np.zeros(x.shape)))]
 
         # Return merged dataframe
         return df

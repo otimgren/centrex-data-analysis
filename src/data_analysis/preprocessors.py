@@ -171,7 +171,7 @@ class CamDAQTimeDiff(PreProcessor):
 
     def process_data(self, df: pd.DataFrame) -> None:
         df["CamDAQTimeDiff"] = df.CameraTime - df.DAQTime
-        df["TimeDiffSmallEnough"] = df.CamDAQTimeDiff < self.threshold
+        df["TimeDiffSmallEnough"] = np.abs(df.CamDAQTimeDiff) < self.threshold
 
 @dataclass
 class IntegratedFluorescenceCam(PreProcessor):

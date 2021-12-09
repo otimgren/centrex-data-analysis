@@ -1,12 +1,14 @@
 from pathlib import Path
+import lmfit
 
 from matplotlib.pyplot import plot
+import numpy as np
 
 from data_analysis.analyzers import FluorescenceImageAnalyzer, ParamScanAnalyzer
 from data_analysis.background_subtractors import AcquiredBackgroundSubtractor, BackgroundSubtractor
 from data_analysis.cutters import (CutterPipeline, YAGFiredCutter, AbsorptionONCutter,
                                    AbsBigEnoughCutter, TimingCutter, RotCoolOFFShutterOpenCutter)
-from data_analysis.plotters import PreProcessorPlotter
+from data_analysis.plotters import PreProcessorPlotter, GaussianFitPlotter, ParamScanPlotter
 from data_analysis.preprocessors import (AbsorptionON, ProcessorPipeline, NormalizedAbsorption, 
                                       IntegratedAbsorption, YAGFired, AbsorptionBigEnough,
                                       RCShutterOpen, RotCoolON, CamDAQTimeDiff)
@@ -80,7 +82,17 @@ def main():
     background_subtractor = AcquiredBackgroundSubtractor(df_background)
 
     # Define a signal size calculator
-    signal_size_calculator = SignalFromGaussianFit()
+    init_params = lmfit.Parameters()
+    init_params.add('A', value = 5, min = 0)
+    init_params.add('center_x', value = 200, min = 0, max = 512)#, vary = False)
+    init_params.add('center_y', value = 250, min = 0, max = 512)#, vary = False)
+    init_params.add('phi', value = 0, min = 0, max = np.pi/4)
+    init_params.add('sigma_x', value = 16, min = 10, max = 100)
+    init_params.add('sigma_y', value = 30, min = 10, max = 100)
+    init_params.add('C', value = 0)
+    signal_size_calculator = SignalFromGaussianFit(plotter = GaussianFitPlotter(),
+                                                   init_params = init_params,
+                                                   ROI = np.s_[150:450, 100:300])
 
     # Define an analyzer
     analyzers = [
@@ -88,10 +100,11 @@ def main():
     ]
 
     # Define a parameter scan analyzer
-    scan_analyzer = ParamScanAnalyzer(scan_param_name, analyzers)
+    scan_analyzer = ParamScanAnalyzer(scan_param_name, analyzers, plotter = ParamScanPlotter())
 
     # Run parameter scan analysis
     df_agg = scan_analyzer.analyze_param_scan(df)
+
 
     print(df_agg.head())
 

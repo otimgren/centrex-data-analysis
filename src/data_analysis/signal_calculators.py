@@ -6,8 +6,11 @@ from dataclasses import dataclass
 from typing import Tuple
 
 import lmfit
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+from data_analysis.plotters import Plotter, Image
 
 @dataclass
 class SignalResult:
@@ -15,6 +18,7 @@ class SignalResult:
     Parent class for signal calculation results
     """
     signal_size: float
+    signal_name: str
 
     @abstractmethod
     def to_df(self) -> pd.DataFrame:
@@ -35,7 +39,7 @@ class GaussianResult(SignalResult):
         Converts result to a pandas dataframe
         """
         data_dict = {
-            "GaussianFitFluorescenceSignal": [self.signal_size],
+            self.signal_name: [self.signal_size],
             "GaussianFitAmplitude": [self.params['A'].value],
             "GaussianFitCenterX": [self.params['center_x'].value],
             "GaussianFitCenterY": [self.params['center_y'].value],
@@ -56,16 +60,21 @@ class SignalCalculator(ABC):
         """
         ...
 
+@dataclass
 class SignalFromGaussianFit(SignalCalculator):
     """
     Signal size calculator that fits a 2D Gaussian to a fluorescence image and returns
     the area under the gaussian
     """
+    ROI: np.s_ = np.s_[0:None, 0:None]
+    signal_name: str = "IntegratedFluorescence"
+    init_params: lmfit.Parameters = None
+    plotter: Plotter = None
 
-    def calculate_signal_size(self, image: np.ndarray, params: lmfit.Parameters = None) -> float:
+    def calculate_signal_size(self, image: Image, params: lmfit.Parameters = None) -> float:
         # Fit 2D Gaussian and get result
         if not params:
-            result = self.fit_2D_gaussian(image)
+            result = self.fit_2D_gaussian(image.values)
             params = result.params
 
         # Calculate the integral of the Gaussian fit
@@ -75,28 +84,33 @@ class SignalFromGaussianFit(SignalCalculator):
         integrated_gaussian = A*np.pi*sigma_x*sigma_y
 
         # Plot the image and the fit if desired
-        self.plot(image, result)
+        if self.plotter:
+            self.plotter.plot(image, result)
 
-        return GaussianResult(integrated_gaussian, params)
+        return GaussianResult(integrated_gaussian,self.signal_name, params)
 
 
-    def fit_2D_gaussian(self, image: np.ndarray, params: lmfit.Parameters = None):
+    def fit_2D_gaussian(self, image: np.ndarray):
         """
         Fits a 2D gaussian to data using lmfit and returns the fit result
         """
         # Get the data for the fit in the correct format
-        data, x, y = self.reshape_data(image)
+        data, x, y = self.get_fit_data(image)
 
         # Guess parameters if not provided
-        if not params:
+        if not self.init_params:
             params = self.guess_params(data, x, y)
+        else:
+            params = self.init_params
 
         # Define model
         model = self.define_model()
 
         # Fit the model
         result = model.fit(data, x = x, y = y, params = params, method = 'least_squares',
-                           max_nfev=1000, nan_policy = 'omit')
+                           max_nfev=1000)
+
+        print(result.fit_report())
 
         return result
 
@@ -110,11 +124,11 @@ class SignalFromGaussianFit(SignalCalculator):
         # Translate the guessed parameters into the laguage of the gaussian2D function
         params = lmfit.Parameters()
         params.add(name = 'A', value = guessed_params['height'].value, min = 0)
-        params.add(name = 'center_x', value = guessed_params['centerx'], min = 0, max = 512)
-        params.add(name = 'center_y', value = guessed_params['centery'], min = 0, max = 512)
+        params.add(name = 'center_x', value = guessed_params['centerx'], min = 50, max = 462)
+        params.add(name = 'center_y', value = guessed_params['centery'], min = 50, max = 462)
         params.add(name = 'sigma_x', value = guessed_params['sigmax'], min = 10, max = 100)
         params.add(name = 'sigma_y', value = guessed_params['sigmay'], min = 10, max = 100)
-        params.add(name = 'phi', value=0, min = 0, max=np.pi/4)
+        params.add(name = 'phi', value = 0, min = 0, max = np.pi/4)
         params.add(name = 'C', value = 0)
 
         return params
@@ -126,22 +140,22 @@ class SignalFromGaussianFit(SignalCalculator):
         model = lmfit.Model(self.gaussian2D, independent_vars=['x','y'])
         return model
 
-    def reshape_data(self, image: np.ndarray) -> Tuple[np.ndarray]:
+    def get_fit_data(self, image: np.ndarray) -> Tuple[np.ndarray]:
         """
         Reshapes the data to a shape that is accepted by lmfit
         """
         # Find the ranges of the x and y axes
-        x_range = np.arange(image.shape[0])
-        y_range = np.arange(image.shape[1])
+        x_range = np.arange(self.ROI[0].start, self.ROI[0].stop)
+        y_range = np.arange(self.ROI[1].start, self.ROI[1].stop, step=1)
 
         # Make meshgrid out of the axes
-        X, Y = np.meshgrid(x_range, y_range)
+        X, Y = np.meshgrid(y_range, x_range)
 
-        # Flatten the mehgrid arrays to get x and y coordinates for flattened image
+        # Flatten the meshgrid arrays to get x and y coordinates for flattened image
         x_fit, y_fit = X.flatten(), Y.flatten()
 
-        # Flatten te image
-        data_fit = image.flatten()
+        # Flatten the image
+        data_fit = image[self.ROI].flatten()
 
         # Return fit cordinates and data
         return data_fit, x_fit, y_fit        
