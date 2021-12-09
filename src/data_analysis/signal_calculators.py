@@ -109,9 +109,7 @@ class SignalFromGaussianFit(SignalCalculator):
         # Fit the model
         result = model.fit(data, x = x, y = y, params = params, method = 'least_squares',
                            max_nfev=1000)
-
-        print(result.fit_report())
-
+                           
         return result
 
     def guess_params(self, data: np.ndarray, x: np.array, y: np.array) -> lmfit.Parameters:

@@ -1,7 +1,8 @@
 from pathlib import Path
 import lmfit
 
-from matplotlib.pyplot import plot
+import matplotlib.pyplot as plt
+plt.style.use(['ggplot'])
 import numpy as np
 
 from data_analysis.analyzers import FluorescenceImageAnalyzer, ParamScanAnalyzer
@@ -31,7 +32,7 @@ def main():
 
     # Retrieve data
     scan_param_name = "SPAJ01Power"
-    df = SPA_retriever.retrieve_data(filepath, 12, scan_param="SynthHD Pro SPA SetPowerCHAGUI",
+    df = SPA_retriever.retrieve_data(filepath, 6, scan_param="SynthHD Pro SPA SetPowerCHAGUI",
                                     scan_param_new_name=scan_param_name)
     
     ##### Processing data #####
@@ -90,8 +91,8 @@ def main():
     init_params.add('sigma_x', value = 16, min = 10, max = 100)
     init_params.add('sigma_y', value = 30, min = 10, max = 100)
     init_params.add('C', value = 0)
-    signal_size_calculator = SignalFromGaussianFit(plotter = GaussianFitPlotter(),
-                                                   init_params = init_params,
+    signal_size_calculator = SignalFromGaussianFit(#plotter = GaussianFitPlotter(),
+                                                   #init_params = init_params,
                                                    ROI = np.s_[150:450, 100:300])
 
     # Define an analyzer

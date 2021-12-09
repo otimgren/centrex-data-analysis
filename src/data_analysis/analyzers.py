@@ -44,10 +44,13 @@ class FluorescenceImageAnalyzer(Analyzer):
         self.subtract_background(df)
 
         # Normalize each image by integrated absorption
-        self.normalize_images(df)
+        # self.normalize_images(df)
 
         # Calculate the mean image
         self.calculate_mean_image(df, scan_param)
+
+        # Normalize mean image by average integrated absorption
+        self.normalize_mean_image(df)
 
         # Calculate signal size
         signal_result = self.signal_calculator.calculate_signal_size(self.mean_image)
@@ -71,6 +74,12 @@ class FluorescenceImageAnalyzer(Analyzer):
         """
         df.loc[:,"CameraData"] = (df.loc[:,"CameraData"].copy()
                                     /df.loc[:,"IntegratedAbsorption"].copy())
+
+    def normalize_mean_image(self, df:pd.DataFrame) -> None:
+        """
+        Normalizes the unnormalized mean image by dividing it by the average integrated absorption 
+        """
+        self.mean_image.values = self.mean_image.values/df.IntegratedAbsorption.mean()
 
     def calculate_mean_image(self, df: pd.DataFrame, scan_param: ScanParam) -> None:
         """
@@ -99,7 +108,7 @@ class ParamScanAnalyzer:
         # Loop over scan parameter values
         df_result = pd.DataFrame()
         print(f"Analyzing parameter scan for parameter = '{self.scan_param}'...")
-        for i, value in enumerate(tqdm(scan_param_values[9:11])):
+        for i, value in enumerate(tqdm(scan_param_values[0:None])):
             # Pick the data that corresponds to current parameter values
             data = df[df[self.scan_param] == value].copy()
 
