@@ -5,14 +5,16 @@ import matplotlib.pyplot as plt
 plt.style.use(['ggplot'])
 import numpy as np
 
-from data_analysis.analyzers import FluorescenceImageAnalyzer, ParamScanAnalyzer
+from data_analysis.analyzers import (FluorescenceImageAnalyzer, ParamScanAnalyzer,
+                                     SwitchingParamScanAnalyzer)
 from data_analysis.background_subtractors import AcquiredBackgroundSubtractor, BackgroundSubtractor
 from data_analysis.cutters import (CutterPipeline, YAGFiredCutter, AbsorptionONCutter,
                                    AbsBigEnoughCutter, TimingCutter, RotCoolOFFShutterOpenCutter)
-from data_analysis.plotters import PreProcessorPlotter, GaussianFitPlotter, ParamScanPlotter
+from data_analysis.plotters import (PreProcessorPlotter, GaussianFitPlotter, ParamScanPlotter,
+                                    SwitchingParamScanPlotter)
 from data_analysis.preprocessors import (AbsorptionON, ProcessorPipeline, NormalizedAbsorption, 
                                       IntegratedAbsorption, YAGFired, AbsorptionBigEnough,
-                                      RCShutterOpen, RotCoolON, CamDAQTimeDiff)
+                                      RCShutterOpen, RotCoolON, CamDAQTimeDiff, MicrowavesON)
 from data_analysis.retrievers import SPARetriever
 from data_analysis.signal_calculators import SignalFromGaussianFit
 
@@ -31,8 +33,8 @@ def main():
     SPA_retriever.print_run_names(filepath)
 
     # Retrieve data
-    scan_param_name = "SPAJ01Power"
-    df = SPA_retriever.retrieve_data(filepath, 6, scan_param="SynthHD Pro SPA SetPowerCHAGUI",
+    scan_param_name = "SPAJ01Frequency"
+    df = SPA_retriever.retrieve_data(filepath, 6, scan_param="SynthHD Pro SPA SetFrequencyCHAGUI",
                                     scan_param_new_name=scan_param_name)
     
     ##### Processing data #####
@@ -46,6 +48,7 @@ def main():
         RotCoolON(),
         RCShutterOpen(),
         CamDAQTimeDiff(),
+        MicrowavesON()
     ]
 
     # Define plotters that will be run after the preprocessing
@@ -74,9 +77,6 @@ def main():
     # Apply cuts
     cutter_pipeline.apply_cuts(df, print_result=True)
 
-    # Print head of cleaned dataframe
-    print(df.head())
-
     ##### Analyze preprocessed data #####
     # Define a background subtractor
     df_background = SPA_retriever.retrieve_data(filepath,0)
@@ -101,11 +101,12 @@ def main():
     ]
 
     # Define a parameter scan analyzer
-    scan_analyzer = ParamScanAnalyzer(scan_param_name, analyzers, plotter = ParamScanPlotter())
+    switch_name = "MicrowavesON"
+    scan_analyzer = SwitchingParamScanAnalyzer(scan_param_name, switch_name, analyzers, 
+                                                plotter = SwitchingParamScanPlotter())
 
     # Run parameter scan analysis
     df_agg = scan_analyzer.analyze_param_scan(df)
-
 
     print(df_agg.head())
 

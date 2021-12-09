@@ -162,6 +162,17 @@ class RCShutterOpen(PreProcessor):
         df["RCShutterOpen"] = df.RCShutter.apply(np.max) > self.shutter_open_cutoff
 
 @dataclass
+class MicrowavesON(PreProcessor):
+    """
+    Checks if microwave shutter is supposed to be open
+    """
+    shutter_open_cutoff: int = 10000
+
+    def process_data(self, df: pd.DataFrame) -> None:
+        df["MicrowavesON"] = df.MicrowaveShutter.apply(np.max) > self.shutter_open_cutoff
+
+
+@dataclass
 class CamDAQTimeDiff(PreProcessor):
     """
     Calculates the time difference between the time the camera and DAQ data were retrieved
@@ -172,6 +183,7 @@ class CamDAQTimeDiff(PreProcessor):
     def process_data(self, df: pd.DataFrame) -> None:
         df["CamDAQTimeDiff"] = df.CameraTime - df.DAQTime
         df["TimeDiffSmallEnough"] = np.abs(df.CamDAQTimeDiff) < self.threshold
+
 
 @dataclass
 class IntegratedFluorescenceCam(PreProcessor):

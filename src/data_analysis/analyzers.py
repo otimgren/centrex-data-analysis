@@ -112,7 +112,7 @@ class ParamScanAnalyzer:
             # Pick the data that corresponds to current parameter values
             data = df[df[self.scan_param] == value].copy()
 
-            # Store that parameter value
+            # Store the parameter value
             scan_param = ScanParam(self.scan_param, value)
 
             # Run all the analyzers and append to dataframe
@@ -135,7 +135,59 @@ class ParamScanAnalyzer:
 
         return df_result
 
+@dataclass
+class SwitchingParamScanAnalyzer:
+    """
+    Groups data by some scanned parameter (e.g. frequency) and a switch (e.g. microwaves ON/OFF) 
+    and repeats the same analysis at each value of the scan parameter and switch
+    """
+    scan_param: str # Name of the scan parameter
+    switch_name: str # Name of the dataframe column that has the switch info
+    analyzers: List[Analyzer] # List of analyzers that are 
+    plotter: Plotter = None
 
+    def analyze_param_scan(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Loop over all values of the scan parameter and analyze the data at each value
+        """
+        # Find all the values that the scan parameter takes
+        scan_param_values = np.sort(np.unique(df[self.scan_param]))
+
+        # Loop over scan parameter values
+        df_result = pd.DataFrame()
+        print(f"Analyzing parameter scan for parameter = '{self.scan_param}'...")
+        for i, value in enumerate(tqdm(scan_param_values[0:None])):
+
+            # Pick the data that corresponds to current parameter values
+            data = df[df[self.scan_param] == value].copy()
+            
+            # Store the parameter value
+            scan_param = ScanParam(self.scan_param, value)
+            
+            # Run all the analyzers with switch on and off and append to dataframe
+            df_ON = self.run_analyzers(data[data[self.switch_name] == True].copy(), scan_param)
+            df_OFF = self.run_analyzers(data[data[self.switch_name] == False].copy(), scan_param)
+            df_result = df_result.append(df_ON.merge(df_OFF, left_index=True, right_index=True, 
+                                            suffixes=('_ON', '_OFF')), ignore_index=True)
+            
+            df_result.loc[i, self.scan_param] = value
+
+        if self.plotter:
+            for analyzer in self.analyzers:
+                self.plotter.plot(df_result, self.scan_param, analyzer.signal_calculator.signal_name,
+                                  self.switch_name)
+
+        return df_result
+
+    def run_analyzers(self, df: pd.DataFrame, scan_param: ScanParam = None) -> pd.DataFrame:
+        """
+        Loop over all the analyzers in the list and merge results into a single dataframe
+        """
+        df_result = pd.DataFrame()
+        for analyzer in self.analyzers:
+            df_result = pd.concat([df_result, analyzer.analyze_data(df, scan_param)])
+
+        return df_result
 
 
 
