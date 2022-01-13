@@ -3,16 +3,17 @@ Classes for further analyzing data after preprocessing
 """
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from re import A
 from typing import List
-from matplotlib.cm import ScalarMappable
 
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
 from .background_subtractors import BackgroundSubtractor
-from .signal_calculators import SignalCalculator
 from .plotters import Image, Plotter, ScanParam
+from .signal_calculators import SignalCalculator
+
 
 class Analyzer(ABC):
     """
@@ -21,11 +22,14 @@ class Analyzer(ABC):
     """
 
     @abstractmethod
-    def analyze_data(self, df: pd.DataFrame, scan_param: ScanParam = None) -> pd.DataFrame:
+    def analyze_data(
+        self, df: pd.DataFrame, scan_param: ScanParam = None
+    ) -> pd.DataFrame:
         """
         Analyzes data and returns the result of the analysis as a dataframe
         """
         ...
+
 
 @dataclass
 class FluorescenceImageAnalyzer(Analyzer):
@@ -33,10 +37,13 @@ class FluorescenceImageAnalyzer(Analyzer):
     Processes fluorescence images taken using a camera. Also uses information about 
     absorption obtained using photodiodes and a DAQ.
     """
+
     background_subtractor: BackgroundSubtractor
     signal_calculator: SignalCalculator
 
-    def analyze_data(self, df: pd.DataFrame, scan_param: ScanParam = None) -> pd.DataFrame:
+    def analyze_data(
+        self, df: pd.DataFrame, scan_param: ScanParam = None
+    ) -> pd.DataFrame:
         """
         Processes the fluorescence images in self.df and returns results as a DataFrame
         """
@@ -57,13 +64,13 @@ class FluorescenceImageAnalyzer(Analyzer):
 
         # Convert signal result to dataframe and return it
         return signal_result.to_df()
-        
+
     def subtract_background(self, df: pd.DataFrame) -> None:
         """
         Subtracts the background from the images using a BackgroundSubtractor
         """
         func = self.background_subtractor.subtract_background
-        df.loc[:,"CameraData"] = df.loc[:,"CameraData"].apply(func)
+        df.loc[:, "CameraData"] = df.loc[:, "CameraData"].apply(func)
         # print(df.CameraData.apply(func))
 
     def normalize_images(self, df: pd.DataFrame) -> None:
@@ -72,33 +79,36 @@ class FluorescenceImageAnalyzer(Analyzer):
         image by the value of the integrated absorption signal corresponding to the same
         molecule pulse as the image.
         """
-        df.loc[:,"CameraData"] = (df.loc[:,"CameraData"].copy()
-                                    /df.loc[:,"IntegratedAbsorption"].copy())
+        df.loc[:, "CameraData"] = (
+            df.loc[:, "CameraData"].copy() / df.loc[:, "IntegratedAbsorption"].copy()
+        )
 
-    def normalize_mean_image(self, df:pd.DataFrame) -> None:
+    def normalize_mean_image(self, df: pd.DataFrame) -> None:
         """
         Normalizes the unnormalized mean image by dividing it by the average integrated absorption 
         """
-        self.mean_image.values = self.mean_image.values/df.IntegratedAbsorption.mean()
+        self.mean_image.values = self.mean_image.values / df.IntegratedAbsorption.mean()
 
     def calculate_mean_image(self, df: pd.DataFrame, scan_param: ScanParam) -> None:
         """
         Calculates the mean of all images stored in the dataframe
         """
-        mean_image = np.nanmean(np.array(list(df.loc[:,"CameraData"])), axis = 0)
+        mean_image = np.nanmean(np.array(list(df.loc[:, "CameraData"])), axis=0)
         self.mean_image = Image(mean_image, scan_param)
 
+
 @dataclass
-class ParamScanAnalyzer:
+class ParamScanAnalyzer(Analyzer):
     """
     Groups data by some scanned parameter and repeats the same analysis at each value
     of the scan parameter
     """
-    scan_param: str # Name of the scan parameter
-    analyzers: List[Analyzer] # List of analyzers that are 
+
+    scan_param: str  # Name of the scan parameter
+    analyzers: List[Analyzer]  # List of analyzers that are
     plotter: Plotter = None
 
-    def analyze_param_scan(self, df: pd.DataFrame) -> pd.DataFrame:
+    def analyze_data(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Loop over all values of the scan parameter and analyze the data at each value
         """
@@ -116,16 +126,22 @@ class ParamScanAnalyzer:
             scan_param = ScanParam(self.scan_param, value)
 
             # Run all the analyzers and append to dataframe
-            df_result = df_result.append(self.run_analyzers(data, scan_param), ignore_index=True)
+            df_result = df_result.append(
+                self.run_analyzers(data, scan_param), ignore_index=True
+            )
             df_result.loc[i, self.scan_param] = value
 
         if self.plotter:
             for analyzer in self.analyzers:
-                self.plotter.plot(df_result, self.scan_param, analyzer.signal_calculator.signal_name)
+                self.plotter.plot(
+                    df_result, self.scan_param, analyzer.signal_calculator.signal_name
+                )
 
         return df_result
 
-    def run_analyzers(self, df: pd.DataFrame, scan_param: ScanParam = None) -> pd.DataFrame:
+    def run_analyzers(
+        self, df: pd.DataFrame, scan_param: ScanParam = None
+    ) -> pd.DataFrame:
         """
         Loop over all the analyzers in the list and merge results into a single dataframe
         """
@@ -135,18 +151,20 @@ class ParamScanAnalyzer:
 
         return df_result
 
+
 @dataclass
-class SwitchingParamScanAnalyzer:
+class SwitchingParamScanAnalyzer(Analyzer):
     """
     Groups data by some scanned parameter (e.g. frequency) and a switch (e.g. microwaves ON/OFF) 
     and repeats the same analysis at each value of the scan parameter and switch
     """
-    scan_param: str # Name of the scan parameter
-    switch_name: str # Name of the dataframe column that has the switch info
-    analyzers: List[Analyzer] # List of analyzers that are 
+
+    scan_param: str  # Name of the scan parameter
+    switch_name: str  # Name of the dataframe column that has the switch info
+    analyzers: List[Analyzer]  # List of analyzers that are
     plotter: Plotter = None
 
-    def analyze_param_scan(self, df: pd.DataFrame) -> pd.DataFrame:
+    def analyze_data(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Loop over all values of the scan parameter and analyze the data at each value
         """
@@ -160,26 +178,40 @@ class SwitchingParamScanAnalyzer:
 
             # Pick the data that corresponds to current parameter values
             data = df[df[self.scan_param] == value].copy()
-            
+
             # Store the parameter value
             scan_param = ScanParam(self.scan_param, value)
-            
+
             # Run all the analyzers with switch on and off and append to dataframe
-            df_ON = self.run_analyzers(data[data[self.switch_name] == True].copy(), scan_param)
-            df_OFF = self.run_analyzers(data[data[self.switch_name] == False].copy(), scan_param)
-            df_result = df_result.append(df_ON.merge(df_OFF, left_index=True, right_index=True, 
-                                            suffixes=('_ON', '_OFF')), ignore_index=True)
-            
+            df_ON = self.run_analyzers(
+                data[data[self.switch_name] == True].copy(), scan_param
+            )
+            df_OFF = self.run_analyzers(
+                data[data[self.switch_name] == False].copy(), scan_param
+            )
+            df_result = df_result.append(
+                df_ON.merge(
+                    df_OFF, left_index=True, right_index=True, suffixes=("_ON", "_OFF")
+                ),
+                ignore_index=True,
+            )
+
             df_result.loc[i, self.scan_param] = value
 
         if self.plotter:
             for analyzer in self.analyzers:
-                self.plotter.plot(df_result, self.scan_param, analyzer.signal_calculator.signal_name,
-                                  self.switch_name)
+                self.plotter.plot(
+                    df_result,
+                    self.scan_param,
+                    analyzer.signal_calculator.signal_name,
+                    self.switch_name,
+                )
 
         return df_result
 
-    def run_analyzers(self, df: pd.DataFrame, scan_param: ScanParam = None) -> pd.DataFrame:
+    def run_analyzers(
+        self, df: pd.DataFrame, scan_param: ScanParam = None
+    ) -> pd.DataFrame:
         """
         Loop over all the analyzers in the list and merge results into a single dataframe
         """
@@ -188,10 +220,3 @@ class SwitchingParamScanAnalyzer:
             df_result = pd.concat([df_result, analyzer.analyze_data(df, scan_param)])
 
         return df_result
-
-
-
-
-
-
-

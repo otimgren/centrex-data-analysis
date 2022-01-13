@@ -247,6 +247,26 @@ class SwitchingParamScanPlotter(Plotter):
 
         plt.show()
 
+@dataclass
+class SwitchingParamScanPlotterBS(Plotter):
+    """
+    Plots the results from a parameter scan
+    """
+    figsize: Tuple[int] = (16,9)
+
+    def plot(self, df: pd.DataFrame, param_name: str, signal_name: str, switch_name: str) -> None:
+        fig, ax = plt.subplots(figsize = (16,9))
+        ax.errorbar(df[param_name], df[signal_name+'_ON'], yerr = df[signal_name+'_ON_err'],
+                     marker = 'x', label = switch_name)
+        ax.errorbar(df[param_name], df[signal_name+'_OFF'], yerr = df[signal_name+'_OFF_err'],
+                     marker = 'x', label = 'NOT '+switch_name)
+        ax.set_xlabel(param_name, fontsize = 16)
+        ax.set_ylabel(signal_name, fontsize = 16)
+        ax.legend()
+        plt.show()
+
+
+
 
     
 
