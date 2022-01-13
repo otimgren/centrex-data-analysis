@@ -3,6 +3,7 @@ Classes for further analyzing data after preprocessing
 """
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from logging import disable
 from re import A
 from typing import List
 
@@ -117,8 +118,8 @@ class ParamScanAnalyzer(Analyzer):
 
         # Loop over scan parameter values
         df_result = pd.DataFrame()
-        print(f"Analyzing parameter scan for parameter = '{self.scan_param}'...")
-        for i, value in enumerate(tqdm(scan_param_values[0:None])):
+        # print(f"Analyzing parameter scan for parameter = '{self.scan_param}'...")
+        for i, value in enumerate(scan_param_values[0:None]):
             # Pick the data that corresponds to current parameter values
             data = df[df[self.scan_param] == value].copy()
 
@@ -173,8 +174,8 @@ class SwitchingParamScanAnalyzer(Analyzer):
 
         # Loop over scan parameter values
         df_result = pd.DataFrame()
-        print(f"Analyzing parameter scan for parameter = '{self.scan_param}'...")
-        for i, value in enumerate(tqdm(scan_param_values[0:None])):
+        # print(f"Analyzing parameter scan for parameter = '{self.scan_param}'...")
+        for i, value in enumerate(tqdm(scan_param_values[0:None], disable=True)):
 
             # Pick the data that corresponds to current parameter values
             data = df[df[self.scan_param] == value].copy()

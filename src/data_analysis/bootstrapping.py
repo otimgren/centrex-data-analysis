@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
 from scipy.stats import median_absolute_deviation
+from tqdm import tqdm
 
 from .analyzers import Analyzer
 from .plotters import Plotter
