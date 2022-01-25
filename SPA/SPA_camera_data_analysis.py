@@ -3,6 +3,7 @@ Code for performing data analysis for State Preparation A tests that were perfor
 using the EMCCD camera in late 2021.
 """
 from pathlib import Path
+from typing import Union
 
 import lmfit
 import matplotlib.pyplot as plt
@@ -19,29 +20,31 @@ from data_analysis import (
 )
 
 
-def main():
+def analyze_SPA_dataset(
+    filepath: Union[Path, str],
+    run_name: Union[str, int],
+    scan_param_name: str,
+    scan_param_new_name: str,
+):
+    """
+    Analyzes an SPA dataset
+    """
     ##### Retrieving data from file #####
     # Initialize data retriever
     SPA_retriever = retrievers.SPARetriever()
 
-    # Define path to data
-    DATA_DIR = Path(
-        "F:\Google Drive\CeNTREX Oskari\State preparation"
-        "\From rotational cooling to ES lens\Data analysis\Data"
-    )
-    DATA_FNAME = Path("SPA_test_11_9_2021.hdf")
-    filepath = DATA_DIR / DATA_FNAME
-
     # Print datasets in data
     SPA_retriever.print_run_names(filepath)
 
+    if type(run_name) == int:
+        run_name = SPA_retriever.get_run_names(filepath)[run_name]
+
     # Retrieve data
-    scan_param_name = "SPAJ01Frequency"
     df = SPA_retriever.retrieve_data(
         filepath,
-        6,
-        scan_param="SynthHD Pro SPA SetFrequencyCHAGUI",
-        scan_param_new_name=scan_param_name,
+        run_name,
+        scan_param=scan_param_name,
+        scan_param_new_name=scan_param_new_name,
     )
 
     ##### Processing data #####
@@ -113,7 +116,7 @@ def main():
     # Define a parameter scan analyzer
     switch_name = "MicrowavesON"
     scan_analyzer = analyzers.SwitchingParamScanAnalyzer(
-        scan_param_name,
+        scan_param_new_name,
         switch_name,
         analyzers_list,
         # plotter = SwitchingParamScanPlotter()
@@ -125,9 +128,28 @@ def main():
     )
     bootstrapper.bootstrap(df, n_bs=10)
     df_bootstrap = bootstrapper.df_bootstrap
-    bootstrapper.aggregate(scan_param=scan_param_name)
+    bootstrapper.aggregate(scan_param=scan_param_new_name)
     df_agg = bootstrapper.df_agg
+
+    df_agg.to_hdf(
+        f"D:\Google Drive\CeNTREX Oskari\State preparation\SPA\Data analysis"
+        f"\Analyzed Data\{str(DATA_FNAME)[:-4]}_analyzed.hdf",
+        run_name,
+        "a",
+    )
 
 
 if __name__ == "__main__":
-    main()
+    # Define path to data
+    DATA_DIR = Path(
+        "D:\Google Drive\CeNTREX Oskari\State preparation\SPA\Data analysis\Data"
+    )
+    DATA_FNAME = Path("SPA_test_11_9_2021.hdf")
+    filepath = DATA_DIR / DATA_FNAME
+
+    # Define scan parameter name
+    scan_param_name = "SynthHD Pro SPA SetFrequencyCHAGUI"
+    scan_param_new_name = "SPAJ01Frequency"
+
+    # Run the script
+    analyze_SPA_dataset(filepath, 6, scan_param_name, scan_param_new_name)

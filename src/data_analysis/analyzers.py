@@ -3,8 +3,6 @@ Classes for further analyzing data after preprocessing
 """
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from logging import disable
-from re import A
 from typing import List
 
 import numpy as np
@@ -35,7 +33,7 @@ class Analyzer(ABC):
 @dataclass
 class FluorescenceImageAnalyzer(Analyzer):
     """
-    Processes fluorescence images taken using a camera. Also uses information about 
+    Processes fluorescence images taken using a camera. Also uses information about
     absorption obtained using photodiodes and a DAQ.
     """
 
@@ -86,7 +84,7 @@ class FluorescenceImageAnalyzer(Analyzer):
 
     def normalize_mean_image(self, df: pd.DataFrame) -> None:
         """
-        Normalizes the unnormalized mean image by dividing it by the average integrated absorption 
+        Normalizes the unnormalized mean image by dividing it by the average integrated absorption
         """
         self.mean_image.values = self.mean_image.values / df.IntegratedAbsorption.mean()
 
@@ -127,8 +125,8 @@ class ParamScanAnalyzer(Analyzer):
             scan_param = ScanParam(self.scan_param, value)
 
             # Run all the analyzers and append to dataframe
-            df_result = df_result.append(
-                self.run_analyzers(data, scan_param), ignore_index=True
+            df_result = pd.concat(
+                [df_result, self.run_analyzers(data, scan_param)], ignore_index=True
             )
             df_result.loc[i, self.scan_param] = value
 
@@ -156,7 +154,7 @@ class ParamScanAnalyzer(Analyzer):
 @dataclass
 class SwitchingParamScanAnalyzer(Analyzer):
     """
-    Groups data by some scanned parameter (e.g. frequency) and a switch (e.g. microwaves ON/OFF) 
+    Groups data by some scanned parameter (e.g. frequency) and a switch (e.g. microwaves ON/OFF)
     and repeats the same analysis at each value of the scan parameter and switch
     """
 
@@ -190,10 +188,16 @@ class SwitchingParamScanAnalyzer(Analyzer):
             df_OFF = self.run_analyzers(
                 data[data[self.switch_name] == False].copy(), scan_param
             )
-            df_result = df_result.append(
-                df_ON.merge(
-                    df_OFF, left_index=True, right_index=True, suffixes=("_ON", "_OFF")
-                ),
+            df_result = pd.concat(
+                [
+                    df_result,
+                    df_ON.merge(
+                        df_OFF,
+                        left_index=True,
+                        right_index=True,
+                        suffixes=("_ON", "_OFF"),
+                    ),
+                ],
                 ignore_index=True,
             )
 

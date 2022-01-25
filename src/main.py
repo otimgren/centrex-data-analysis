@@ -54,8 +54,7 @@ def main():
 
     # Define path to data
     DATA_DIR = Path(
-        "F:\Google Drive\CeNTREX Oskari\State preparation"
-        + "\From rotational cooling to ES lens\Data analysis\Data"
+        "D:\Google Drive\CeNTREX Oskari\State preparation" "\SPA\Data analysis\Data"
     )
     DATA_FNAME = Path("SPA_test_11_9_2021.hdf")
     filepath = DATA_DIR / DATA_FNAME
@@ -125,7 +124,7 @@ def main():
     init_params.add("sigma_y", value=30, min=10, max=100)
     init_params.add("C", value=0)
     signal_size_calculator = SignalFromGaussianFit(  # plotter = GaussianFitPlotter(),
-        # init_params = init_params,
+        # init_params=init_params,
         ROI=np.s_[150:450, 100:300]
     )
 
@@ -142,6 +141,9 @@ def main():
         analyzers,
         # plotter = SwitchingParamScanPlotter()
     )
+
+    # Run analysis just once
+    scan_analyzer.analyze_data(df)
 
     # Run parameter scan analysis using bootstrap
     bootstrapper = Bootstrapper(scan_analyzer, plotter=SwitchingParamScanPlotterBS())

@@ -61,6 +61,9 @@ class SPARetriever(Retriever):
         # Remove lines where camera returned all zeros
         df = df[~df["CameraData"].apply(lambda x: np.allclose(x, np.zeros(x.shape)))]
 
+        # Store run name in metadata of dataframe
+        df.attrs["run_name"] = run_name
+
         # Return merged dataframe
         return df
 
@@ -188,4 +191,3 @@ class SPARetriever(Retriever):
         print("Dataset names:")
         for i, key in enumerate(keys):
             print(f"{i} -- {key}")
-
