@@ -23,8 +23,11 @@ from data_analysis import (
 def analyze_SPA_dataset(
     filepath: Union[Path, str],
     run_name: Union[str, int],
+    background_run_name: Union[str, int],
     scan_param_name: str,
     scan_param_new_name: str,
+    switch_name: str = None,
+    n_bs: int = 6,
 ):
     """
     Analyzes an SPA dataset
@@ -34,7 +37,7 @@ def analyze_SPA_dataset(
     SPA_retriever = retrievers.SPARetriever()
 
     # Print datasets in data
-    SPA_retriever.print_run_names(filepath)
+    # SPA_retriever.print_run_names(filepath)
 
     if type(run_name) == int:
         run_name = SPA_retriever.get_run_names(filepath)[run_name]
@@ -89,7 +92,7 @@ def analyze_SPA_dataset(
 
     ##### Analyze preprocessed data #####
     # Define a background subtractor
-    df_background = SPA_retriever.retrieve_data(filepath, 0)
+    df_background = SPA_retriever.retrieve_data(filepath, background_run_name)
     background_subtractor = BG_subtract.AcquiredBackgroundSubtractor(df_background)
 
     # Define a signal size calculator
@@ -114,26 +117,49 @@ def analyze_SPA_dataset(
     ]
 
     # Define a parameter scan analyzer
-    switch_name = "MicrowavesON"
-    scan_analyzer = analyzers.SwitchingParamScanAnalyzer(
-        scan_param_new_name,
-        switch_name,
-        analyzers_list,
-        # plotter = SwitchingParamScanPlotter()
-    )
+    if switch_name:
+        scan_analyzer = analyzers.SwitchingParamScanAnalyzer(
+            scan_param_new_name,
+            switch_name,
+            analyzers_list,
+            # plotter = SwitchingParamScanPlotter()
+        )
+    else:
+        scan_analyzer = analyzers.ParamScanAnalyzer(
+            scan_param_new_name,
+            analyzers_list,
+            # plotter = ParamScanPlotter()
+        )
 
     # Run parameter scan analysis using bootstrap
     bootstrapper = bootstrapping.Bootstrapper(
         scan_analyzer, plotter=plotters.SwitchingParamScanPlotterBS()
     )
-    bootstrapper.bootstrap(df, n_bs=10)
+    bootstrapper.bootstrap(df, n_bs=n_bs, n_jobs=6)
     df_bootstrap = bootstrapper.df_bootstrap
     bootstrapper.aggregate(scan_param=scan_param_new_name)
     df_agg = bootstrapper.df_agg
 
+    # Save the analyzed data
+    # Bootstrapped data for distributions
+
+    bs_save_path = (
+        f"D:\Google Drive\CeNTREX Oskari\State preparation\SPA\Data analysis"
+        f"\Analyzed Data\{filepath.parts[-1][:-4]}_bootstrap.hdf"
+    )
+
+    df_bootstrap.to_hdf(
+        bs_save_path,
+        run_name,
+        "a",
+    )
+    print("Saved bootstrapped results to:")
+    print(bs_save_path)
+
+    # Aggregated data for final results
     df_agg.to_hdf(
         f"D:\Google Drive\CeNTREX Oskari\State preparation\SPA\Data analysis"
-        f"\Analyzed Data\{str(DATA_FNAME)[:-4]}_analyzed.hdf",
+        f"\Analyzed Data\{filepath.parts[-1][:-4]}_analyzed.hdf",
         run_name,
         "a",
     )
@@ -152,4 +178,6 @@ if __name__ == "__main__":
     scan_param_new_name = "SPAJ01Frequency"
 
     # Run the script
-    analyze_SPA_dataset(filepath, 6, scan_param_name, scan_param_new_name)
+    analyze_SPA_dataset(
+        filepath, 6, 0, scan_param_name, scan_param_new_name, switch_name="MicrowavesON"
+    )

@@ -5,7 +5,7 @@ Bootstrapper objcects that are used to get errorbars for fit results
 import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
-from scipy.stats import median_absolute_deviation
+from scipy.stats import median_abs_deviation
 from tqdm import tqdm
 
 from .analyzers import Analyzer
@@ -17,7 +17,7 @@ def mad_err(series: pd.Series) -> float:
     Estimates uncertainties based on median absolute deviation from median. Scaled
     to corresponed to standard error of gaussian if series is normally distributed
     """
-    return 1.4826 * median_absolute_deviation(series)
+    return median_abs_deviation(series, scale="normal")
 
 
 class Bootstrapper:
@@ -86,4 +86,3 @@ class Bootstrapper:
                     analyzer.signal_calculator.signal_name,
                     self.analyzer.switch_name,
                 )
-
