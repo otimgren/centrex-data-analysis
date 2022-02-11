@@ -3,7 +3,7 @@ Code used for analyzing data for the CeNTREX experiment.
 
 ## Getting started
 - I suggest first creating a clean virtual environment, e.g. using conda by running `conda create --name [environment name] python==3.10` (might also work with newer or older versions of Python).
-- Then run `python setup.py install` in the root folder of the repository to install the data analysis package and its dependencies.
+- Download/fork the repository and then run `python setup.py install` in the root folder of the repository to install the data analysis package and its dependencies.
 - You should then be able to run the scripts in the folders for each part of the experiment (assuming you have the data available and sort out the paths to the data).
 
 ## Flow of data
