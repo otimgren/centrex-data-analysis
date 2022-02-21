@@ -84,5 +84,4 @@ class Bootstrapper:
                     self.df_agg,
                     self.analyzer.scan_param,
                     analyzer.signal_calculator.signal_name,
-                    self.analyzer.switch_name,
                 )

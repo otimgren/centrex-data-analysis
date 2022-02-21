@@ -18,6 +18,6 @@ setup(
         "matplotlib>=3.5",
         "tqdm>=4.62",
         "h5py>=3.6",
-        "pytables>=3.6.1",
+        "tables>=3.6.1",
     ],
 )

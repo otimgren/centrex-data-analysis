@@ -97,16 +97,17 @@ def analyze_SPA_dataset(
 
     # Define a signal size calculator
     init_params = lmfit.Parameters()
-    init_params.add("A", value=5, min=0)
+    init_params.add("A", value=10, min=0)
     init_params.add("center_x", value=200, min=0, max=512)  # , vary = False)
     init_params.add("center_y", value=250, min=0, max=512)  # , vary = False)
     init_params.add("phi", value=0, min=0, max=np.pi / 4)
     init_params.add("sigma_x", value=16, min=10, max=100)
     init_params.add("sigma_y", value=30, min=10, max=100)
     init_params.add("C", value=0)
-    signal_size_calculator = signal_calculators.SignalFromGaussianFit(  # plotter = GaussianFitPlotter(),
-        # init_params = init_params,
-        ROI=np.s_[150:450, 100:300]
+    signal_size_calculator = (
+        signal_calculators.SignalFromGaussianFit(  # plotter = GaussianFitPlotter(),
+            init_params=init_params, ROI=np.s_[150:450, 100:300]
+        )
     )
 
     # Define an analyzer
@@ -132,10 +133,13 @@ def analyze_SPA_dataset(
         )
 
     # Run parameter scan analysis using bootstrap
-    bootstrapper = bootstrapping.Bootstrapper(
-        scan_analyzer, plotter=plotters.SwitchingParamScanPlotterBS()
-    )
-    bootstrapper.bootstrap(df, n_bs=n_bs, n_jobs=6)
+    if switch_name:
+        bs_plotter = plotters.SwitchingParamScanPlotterBS(switch_name)
+    else:
+        bs_plotter = plotters.ParamScanPlotterBS()
+
+    bootstrapper = bootstrapping.Bootstrapper(scan_analyzer, plotter=bs_plotter)
+    bootstrapper.bootstrap(df, n_bs=n_bs, n_jobs=5)
     df_bootstrap = bootstrapper.df_bootstrap
     bootstrapper.aggregate(scan_param=scan_param_new_name)
     df_agg = bootstrapper.df_agg
@@ -147,7 +151,6 @@ def analyze_SPA_dataset(
         f"D:\Google Drive\CeNTREX Oskari\State preparation\SPA\Data analysis"
         f"\Analyzed Data\{filepath.parts[-1][:-4]}_bootstrap.hdf"
     )
-
     df_bootstrap.to_hdf(
         bs_save_path,
         run_name,
@@ -157,12 +160,19 @@ def analyze_SPA_dataset(
     print(bs_save_path)
 
     # Aggregated data for final results
-    df_agg.to_hdf(
+    agg_save_path = (
         f"D:\Google Drive\CeNTREX Oskari\State preparation\SPA\Data analysis"
-        f"\Analyzed Data\{filepath.parts[-1][:-4]}_analyzed.hdf",
+        f"\Analyzed Data\{filepath.parts[-1][:-4]}_analyzed.hdf"
+    )
+    df_agg.to_hdf(
+        agg_save_path,
         run_name,
         "a",
     )
+    print("\nSaved aggregated results to:")
+    print(agg_save_path)
+    print("\nRun name:")
+    print(run_name)
 
 
 if __name__ == "__main__":

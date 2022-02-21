@@ -3,6 +3,7 @@ Classes for further analyzing data after preprocessing
 """
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from locale import normalize
 from typing import List
 
 import numpy as np
@@ -39,6 +40,7 @@ class FluorescenceImageAnalyzer(Analyzer):
 
     background_subtractor: BackgroundSubtractor
     signal_calculator: SignalCalculator
+    normalize: bool = True
 
     def analyze_data(
         self, df: pd.DataFrame, scan_param: ScanParam = None
@@ -56,7 +58,8 @@ class FluorescenceImageAnalyzer(Analyzer):
         self.calculate_mean_image(df, scan_param)
 
         # Normalize mean image by average integrated absorption
-        self.normalize_mean_image(df)
+        if self.normalize:
+            self.normalize_mean_image(df)
 
         # Calculate signal size
         signal_result = self.signal_calculator.calculate_signal_size(self.mean_image)
