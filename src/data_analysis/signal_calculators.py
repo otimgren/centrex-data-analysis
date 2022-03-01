@@ -81,7 +81,7 @@ class SignalFromGaussianFit(SignalCalculator):
 
     def calculate_signal_size(
         self, image: Image, params: lmfit.Parameters = None
-    ) -> float:
+    ) -> GaussianResult:
         # Fit 2D Gaussian and get result
         if not params:
             result = self.fit_2D_gaussian(image.values)
@@ -165,7 +165,10 @@ class SignalFromGaussianFit(SignalCalculator):
         x_fit, y_fit = X.flatten(), Y.flatten()
 
         # Flatten the image
-        data_fit = image[self.ROI].flatten()
+        try:
+            data_fit = image[self.ROI].flatten()
+        except IndexError:
+            data_fit = np.zeros(x_fit.shape)
 
         # Return fit cordinates and data
         return data_fit, x_fit, y_fit

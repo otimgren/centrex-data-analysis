@@ -104,10 +104,8 @@ def analyze_SPA_dataset(
     init_params.add("sigma_x", value=16, min=10, max=100)
     init_params.add("sigma_y", value=30, min=10, max=100)
     init_params.add("C", value=0)
-    signal_size_calculator = (
-        signal_calculators.SignalFromGaussianFit(  # plotter = GaussianFitPlotter(),
-            init_params=init_params, ROI=np.s_[150:450, 100:300]
-        )
+    signal_size_calculator = signal_calculators.SignalFromGaussianFit(  # plotter = GaussianFitPlotter(),
+        init_params=init_params, ROI=np.s_[150:450, 100:300]
     )
 
     # Define an analyzer
@@ -148,26 +146,22 @@ def analyze_SPA_dataset(
     # Bootstrapped data for distributions
 
     bs_save_path = (
-        f"D:\Google Drive\CeNTREX Oskari\State preparation\SPA\Data analysis"
+        f"G:\My Drive\CeNTREX Oskari\State preparation\SPA\Data analysis"
         f"\Analyzed Data\{filepath.parts[-1][:-4]}_bootstrap.hdf"
     )
     df_bootstrap.to_hdf(
-        bs_save_path,
-        run_name,
-        "a",
+        bs_save_path, run_name, "a",
     )
     print("Saved bootstrapped results to:")
     print(bs_save_path)
 
     # Aggregated data for final results
     agg_save_path = (
-        f"D:\Google Drive\CeNTREX Oskari\State preparation\SPA\Data analysis"
+        f"G:\My Drive\CeNTREX Oskari\State preparation\SPA\Data analysis"
         f"\Analyzed Data\{filepath.parts[-1][:-4]}_analyzed.hdf"
     )
     df_agg.to_hdf(
-        agg_save_path,
-        run_name,
-        "a",
+        agg_save_path, run_name, "a",
     )
     print("\nSaved aggregated results to:")
     print(agg_save_path)
