@@ -1,6 +1,9 @@
 test.hdf
 data_flow_chart.md
 /SPA/saved_figs/*
+/SPA/saved_plots
+/SPA/saved_data
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
