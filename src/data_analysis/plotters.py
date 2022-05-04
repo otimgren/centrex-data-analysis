@@ -1,8 +1,10 @@
 """
 Classes used for visualizing data
 """
+import pickle
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Tuple
 
 import lmfit
@@ -12,6 +14,8 @@ import pandas as pd
 from matplotlib.patches import Rectangle
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+PLOT_DIR = Path("./saved_plots")
+
 
 @dataclass
 class ScanParam:
@@ -20,9 +24,16 @@ class ScanParam:
 
 
 @dataclass
+class Switch:
+    name: str
+    value: float
+
+
+@dataclass
 class Image:
     values: np.ndarray  # Array with values for image brightness
     scan_param: ScanParam = None  # Info about scan parameter if needed
+    switch: Switch = None
 
 
 @dataclass
@@ -43,6 +54,10 @@ class Plotter(ABC):
 class PlotterDefault(Plotter):
     figsize: Tuple[int] = (16, 9)
     label_fontsize: int = 16
+
+    def __post_init__(self):
+        self.fig = None
+        self.ax = None
 
 
 @dataclass
@@ -110,10 +125,13 @@ class PreProcessorPlotter(PlotterDefault):
         self.ax[1, 1].set_ylabel("RC PD signal")
 
 
+@dataclass
 class GaussianFitPlotter(PlotterDefault):
     """
     Used for plotting a fluorescence image and a gaussian fit to it.
     """
+
+    save: bool = False
 
     def plot(self, image: Image, result: lmfit.model.ModelResult) -> None:
         # Get parameters needed for plotting
@@ -123,14 +141,18 @@ class GaussianFitPlotter(PlotterDefault):
         self.setup_plots()
         self.plot_image(image.values)
         self.plot_fit(result)
-        self.add_colorbar()
+        # self.add_colorbar()
         self.plot_fit_maximum(result)
         self.plot_cut_along_vertical(image.values)
         self.plot_vline()
         self.plot_cut_along_horizontal(image.values)
         self.plot_hline()
-        if image.scan_param:
-            self.add_title(image.scan_param)
+        self.plot_fit_x(result)
+        self.plot_fit_y(result)
+        if image.scan_param or image.switch:
+            self.add_title(image.scan_param, image.switch)
+            if self.save:
+                self.save_plot()
 
         plt.show()
 
@@ -181,6 +203,20 @@ class GaussianFitPlotter(PlotterDefault):
             result.eval(x=x_plot, y=y_plot).reshape(self.image_shape), origin="lower"
         )
 
+    def plot_fit_x(self, result: lmfit.model.ModelResult) -> None:
+        """
+        Plots fit along the x direction
+        """
+        x_range = np.arange(0, self.image_shape[0])
+        self.top_ax.plot(result.eval(x=x_range, y=self.center_y))
+
+    def plot_fit_y(self, result: lmfit.model.ModelResult) -> None:
+        """
+        Plots fit along the x direction
+        """
+        y_range = np.arange(0, self.image_shape[1])
+        self.right_ax.plot(result.eval(x=self.center_x, y=y_range), y_range)
+
     def add_colorbar(self) -> None:
         """
         Adds a colorbar to the plot
@@ -224,12 +260,25 @@ class GaussianFitPlotter(PlotterDefault):
         """
         self.ax.axhline(self.center_y, color="k", ls="--")
 
-    def add_title(self, scan_param: ScanParam) -> None:
+    def add_title(self, scan_param: ScanParam, switch: Switch) -> None:
         """
         Adds a title to the plots
         """
-        title = f"{scan_param.name} = {scan_param.value}"
+        title = ""
+        if scan_param:
+            title += f"{scan_param.name} = {scan_param.value}"
+
+        if switch:
+            title += f", {switch.name} = {switch.value}"
+
         self.fig.suptitle(title)
+
+    def save_plot(self):
+        save_dict = {"fig": self.fig, "ax": [self.ax, self.top_ax, self.right_ax]}
+        with open(
+            PLOT_DIR / Path(self.fig._suptitle.get_text() + ".pickle"), "wb+"
+        ) as f:
+            pickle.dump(save_dict, f)
 
 
 @dataclass

@@ -104,8 +104,8 @@ def analyze_SPA_dataset(
     init_params.add("sigma_x", value=16, min=10, max=100)
     init_params.add("sigma_y", value=30, min=10, max=100)
     init_params.add("C", value=0)
-    signal_size_calculator = signal_calculators.SignalFromGaussianFit(  # plotter = GaussianFitPlotter(),
-        init_params=init_params, ROI=np.s_[150:450, 100:300]
+    signal_size_calculator = signal_calculators.SignalFromGaussianFit(
+        init_params=init_params, ROI=np.s_[150:450, 100:300],
     )
 
     # Define an analyzer

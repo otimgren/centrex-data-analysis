@@ -11,7 +11,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from .background_subtractors import BackgroundSubtractor
-from .plotters import Image, Plotter, ScanParam
+from .plotters import Image, Plotter, ScanParam, Switch
 from .signal_calculators import SignalCalculator
 
 
@@ -35,7 +35,7 @@ class Analyzer(ABC):
 class FluorescenceImageAnalyzer(Analyzer):
     """
     Processes fluorescence images taken using a camera. Also uses information about
-    absorption obtained using photodiodes and a DAQ.
+    absorption obtained using photodiodes and a DAQ to normalize the fluorescence.
     """
 
     background_subtractor: BackgroundSubtractor
@@ -43,7 +43,7 @@ class FluorescenceImageAnalyzer(Analyzer):
     normalize: bool = True
 
     def analyze_data(
-        self, df: pd.DataFrame, scan_param: ScanParam = None
+        self, df: pd.DataFrame, scan_param: ScanParam = None, switch: Switch = None
     ) -> pd.DataFrame:
         """
         Processes the fluorescence images in self.df and returns results as a DataFrame
@@ -55,7 +55,7 @@ class FluorescenceImageAnalyzer(Analyzer):
         # self.normalize_images(df)
 
         # Calculate the mean image
-        self.calculate_mean_image(df, scan_param)
+        self.calculate_mean_image(df, scan_param, switch)
 
         # Normalize mean image by average integrated absorption
         if self.normalize:
@@ -91,12 +91,14 @@ class FluorescenceImageAnalyzer(Analyzer):
         """
         self.mean_image.values = self.mean_image.values / df.IntegratedAbsorption.mean()
 
-    def calculate_mean_image(self, df: pd.DataFrame, scan_param: ScanParam) -> None:
+    def calculate_mean_image(
+        self, df: pd.DataFrame, scan_param: ScanParam = None, switch: Switch = None
+    ) -> None:
         """
         Calculates the mean of all images stored in the dataframe
         """
         mean_image = np.nanmean(np.array(list(df.loc[:, "CameraData"])), axis=0)
-        self.mean_image = Image(mean_image, scan_param)
+        self.mean_image = Image(mean_image, scan_param, switch)
 
 
 @dataclass
@@ -186,10 +188,14 @@ class SwitchingParamScanAnalyzer(Analyzer):
 
             # Run all the analyzers with switch on and off and append to dataframe
             df_ON = self.run_analyzers(
-                data[data[self.switch_name] == True].copy(), scan_param
+                data[data[self.switch_name] == True].copy(),
+                scan_param,
+                Switch(self.switch_name, True),
             )
             df_OFF = self.run_analyzers(
-                data[data[self.switch_name] == False].copy(), scan_param
+                data[data[self.switch_name] == False].copy(),
+                scan_param,
+                Switch(self.switch_name, False),
             )
             df_result = pd.concat(
                 [
@@ -218,13 +224,16 @@ class SwitchingParamScanAnalyzer(Analyzer):
         return df_result
 
     def run_analyzers(
-        self, df: pd.DataFrame, scan_param: ScanParam = None
+        self, df: pd.DataFrame, scan_param: ScanParam = None, switch: Switch = None
     ) -> pd.DataFrame:
         """
         Loop over all the analyzers in the list and merge results into a single dataframe
         """
         df_result = pd.DataFrame()
         for analyzer in self.analyzers:
-            df_result = pd.concat([df_result, analyzer.analyze_data(df, scan_param)])
+            df_result = pd.concat(
+                [df_result, analyzer.analyze_data(df, scan_param, switch)]
+            )
 
         return df_result
+
